@@ -25,12 +25,16 @@ const Lang = imports.lang;
 const Util = imports.misc.util;
 const GLib = imports.gi.GLib;
 const centerBox = Main.panel._centerBox;
-const ByteArray = imports.byteArray;
+// for future use...
+//const ByteArray = imports.byteArray;
 
 const NEW_MAIL_ICON_COLOR = '#E95420';
 
 // get the default mail client's app.desktop filename (and remove the blank space at last position...)
-let defaultMailAppFilename = ByteArray.toString(GLib.spawn_command_line_sync("xdg-mime query default x-scheme-handler/mailto")[1]).slice(0,-1);
+let defaultMailAppFilename = String(GLib.spawn_command_line_sync("xdg-mime query default x-scheme-handler/mailto")[1]).slice(0,-1);
+// to be replaced in the future by...
+//let defaultMailAppFilename = ByteArray.toString(GLib.spawn_command_line_sync("xdg-mime query default x-scheme-handler/mailto")[1]).slice(0,-1);
+
 // get the default mail client's executable command
 let defaultMailAppExe;
 let defaultMailAppName;
@@ -62,7 +66,7 @@ switch (defaultMailAppFilename) {
 //Main.notify(defaultMailAppFilename+"  "+defaultMailAppExe+"  "+defaultMailAppName);
 
 const MailIndicator = new Lang.Class({
-    Name: 'MailIndicator',
+    Name: 'NewMailIndicator',
 
     _init: function() {   	
         this.actor = new St.Bin({style_class: 'panel-button', visible: true, 
@@ -94,14 +98,7 @@ const MailIndicator = new Lang.Class({
     _startDefaultMailApp: function() {
     	try {Util.spawnCommandLine(defaultMailAppExe);}
     	catch(error) {Util.spawnCommandLine(defaultMailAppExeAlt);}
-    },
-    	
-    _destroy: function() {
-    	Main.messageTray.disconnect(this._onSourceAdded);
-        Main.messageTray.disconnect(this._onSourceRemoved);
-		this.actor.destroy();
-	}
-	
+    }	
 });
 
 let mail_indicator;
@@ -116,5 +113,4 @@ function enable() {
 
 function disable() {
 	centerBox.remove_actor(mail_indicator.actor);
-	mail_indicator._destroy();
 }
