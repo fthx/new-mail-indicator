@@ -1,6 +1,6 @@
 
 /*
- * New Mail Indicator extension for Gnome 3.x
+ * New Mail Indicator extension for Gnome 3.36+
  * Copyright 2020 fthx
  *
  * This program is free software: you can redistribute it and/or modify
@@ -25,15 +25,11 @@ const Lang = imports.lang;
 const Util = imports.misc.util;
 const GLib = imports.gi.GLib;
 const centerBox = Main.panel._centerBox;
-// for future use...
-//const ByteArray = imports.byteArray;
+const ByteArray = imports.byteArray;
 
 const NEW_MAIL_ICON_COLOR = '#E95420';
 
-// get the default mail client's app.desktop filename (and remove the blank space at last position...)
-let defaultMailAppFilename = String(GLib.spawn_command_line_sync("xdg-mime query default x-scheme-handler/mailto")[1]).slice(0,-1);
-// to be replaced in the future by...
-//let defaultMailAppFilename = ByteArray.toString(GLib.spawn_command_line_sync("xdg-mime query default x-scheme-handler/mailto")[1]).slice(0,-1);
+let defaultMailAppFilename = ByteArray.toString(GLib.spawn_command_line_sync("xdg-mime query default x-scheme-handler/mailto")[1]).slice(0,-1);
 
 // get the default mail client's executable command
 let defaultMailAppExe;
@@ -42,6 +38,7 @@ let defaultMailAppExeAlt;
 switch (defaultMailAppFilename) {
   case "thunderbird.desktop":
   case "mozilla-thunderbird.desktop":
+  case "thunderbird_thunderbird.desktop":
     defaultMailAppExe = "thunderbird";
     defaultMailAppName = "Thunderbird";
     break;
@@ -59,7 +56,6 @@ switch (defaultMailAppFilename) {
   	defaultMailAppName = "Mailspring";
   	break;
   default:
-    // if nothing is found
     Main.notify("New Mail Indicator: error, no known email client found.");
 };
 // for debug purposes you can uncomment the next line: it will pop-up the default mail client above names
@@ -74,13 +70,14 @@ const MailIndicator = new Lang.Class({
         this.icon = new St.Icon({icon_name: 'mail-read-symbolic', style_class: 'system-status-icon'});
         this.actor.set_child(this.icon);
 
-        Main.messageTray.connect('source-added', Lang.bind(this, this._onSourceAdded));
-        Main.messageTray.connect('source-removed', Lang.bind(this, this._onSourceRemoved));        
-        this.actor.connect('button-press-event', this._startDefaultMailApp);      
+        this.source_added = Main.messageTray.connect('source-added', Lang.bind(this, this._onSourceAdded));
+        this.source_removed = Main.messageTray.connect('source-removed', Lang.bind(this, this._onSourceRemoved));        
+        this.button_pressed = this.actor.connect('button-press-event', Lang.bind(this, this._startDefaultMailApp));      
     },
 
     _onSourceAdded: function(tray, source) {
-        if (source.title.includes(defaultMailAppName)) {
+    	this.app = source;
+        if (this.app.title.includes(defaultMailAppName)) {
         	this.mail_icon = 'mail-unread-symbolic';
         	this.icon.icon_name = this.mail_icon;
         	this.actor.style = 'color: ' + NEW_MAIL_ICON_COLOR + ';';
@@ -88,17 +85,33 @@ const MailIndicator = new Lang.Class({
     },
 
     _onSourceRemoved: function(tray, source) {
-        if (source.title.includes(defaultMailAppName)) {
+    	this.app = source;
+        if (this.app.title.includes(defaultMailAppName)) {
         	this.mail_icon = 'mail-read-symbolic';
         	this.icon.icon_name = this.mail_icon;
         	this.actor.style = 'color: ;';
+        	// for (let notification of this.app.notifications) {
+    		//	notification.destroy();
+    		// }
         }
     },
     
     _startDefaultMailApp: function() {
+    	for (let source of Main.messageTray.getSources()) {
+    		if (source.title.includes(defaultMailAppName)) {
+    			Main.messageTray._removeSource(source);
+    		}
+    	}
     	try {Util.spawnCommandLine(defaultMailAppExe);}
     	catch(error) {Util.spawnCommandLine(defaultMailAppExeAlt);}
-    }	
+    },
+    
+    _destroy: function() {
+    	Main.messageTray.disconnect(this.source_added);
+        Main.messageTray.disconnect(this.source_removed);        
+        this.actor.disconnect(this.button_pressed); 
+        this.actor.destroy();
+	}
 });
 
 let mail_indicator;
@@ -112,5 +125,6 @@ function enable() {
 }
 
 function disable() {
-	centerBox.remove_actor(mail_indicator.actor);
+	//centerBox.remove_actor(mail_indicator.actor);
+	mail_indicator._destroy();
 }
