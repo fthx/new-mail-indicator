@@ -1,130 +1,134 @@
-
 /*
- * New Mail Indicator extension for Gnome 3.36+
- * Copyright 2020 fthx
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- */
+	New Mail Indicator extension (for Gnome 3.36+)
+	Copyright 2020 Francois Thirioux
+	GitHub contributors: @fthx
+	License: GPL v3
+*/
 
-
-const St = imports.gi.St;
+const { GLib, GObject, Shell, St } = imports.gi;
 const Main = imports.ui.main;
+const PanelMenu = imports.ui.panelMenu;
 const Lang = imports.lang;
 const Util = imports.misc.util;
-const GLib = imports.gi.GLib;
-const centerBox = Main.panel._centerBox;
 const ByteArray = imports.byteArray;
 
+// new mail indicator color (default Yaru orange: #E95420; GNOME blue: #3584E4)
 const NEW_MAIL_ICON_COLOR = '#E95420';
 
-let defaultMailAppFilename = ByteArray.toString(GLib.spawn_command_line_sync("xdg-mime query default x-scheme-handler/mailto")[1]).slice(0,-1);
 
-// get the default mail client's executable command
-let defaultMailAppExe;
-let defaultMailAppName;
-let defaultMailAppExeAlt;
-switch (defaultMailAppFilename) {
-  case "thunderbird.desktop":
-  case "mozilla-thunderbird.desktop":
-  case "thunderbird_thunderbird.desktop":
-    defaultMailAppExe = "thunderbird";
-    defaultMailAppName = "Thunderbird";
-    break;
-  case "org.gnome.Evolution.desktop":
-    defaultMailAppExe = "evolution -c mail";
-    defaultMailAppName = "Evolution";
-    break;
-  case "org.gnome.Geary.desktop":
-    defaultMailAppExe = "geary";
-    defaultMailAppExeAlt = "flatpak run org.gnome.Geary";
-    defaultMailAppName = "Geary";
-    break;
-  case "mailspring_mailspring.desktop":
-  	defaultMailAppExe = "mailspring";
-  	defaultMailAppName = "Mailspring";
-  	break;
-  default:
-    Main.notify("New Mail Indicator: error, no known email client found.");
-};
-// for debug purposes you can uncomment the next line: it will pop-up the default mail client above names
-//Main.notify(defaultMailAppFilename+"  "+defaultMailAppExe+"  "+defaultMailAppName);
-
-const MailIndicator = new Lang.Class({
-    Name: 'NewMailIndicator',
-
-    _init: function() {   	
-        this.actor = new St.Bin({style_class: 'panel-button', visible: true, 
-        	reactive: true, can_focus: true, track_hover: true});        
+var MailIndicator = GObject.registerClass(
+class MailIndicator extends PanelMenu.Button {
+    _init() {
+    	super._init(0.0, 'New Mail Indicator');
+    	
+    	this._find_default_client();
+    	
+    	// create indicator button
+        this.button = new St.Bin({style_class: 'panel-button', visible: true, reactive: true, can_focus: true, track_hover: true});        
         this.icon = new St.Icon({icon_name: 'mail-read-symbolic', style_class: 'system-status-icon'});
-        this.actor.set_child(this.icon);
+        this.button.set_child(this.icon);
 
-        this.source_added = Main.messageTray.connect('source-added', Lang.bind(this, this._onSourceAdded));
-        this.source_removed = Main.messageTray.connect('source-removed', Lang.bind(this, this._onSourceRemoved));        
-        this.button_pressed = this.actor.connect('button-press-event', Lang.bind(this, this._startDefaultMailApp));      
-    },
-
-    _onSourceAdded: function(tray, source) {
-    	this.app = source;
-        if (this.app.title.includes(defaultMailAppName)) {
-        	this.mail_icon = 'mail-unread-symbolic';
-        	this.icon.icon_name = this.mail_icon;
-        	this.actor.style = 'color: ' + NEW_MAIL_ICON_COLOR + ';';
-        }
-    },
-
-    _onSourceRemoved: function(tray, source) {
-    	this.app = source;
-        if (this.app.title.includes(defaultMailAppName)) {
-        	this.mail_icon = 'mail-read-symbolic';
-        	this.icon.icon_name = this.mail_icon;
-        	this.actor.style = 'color: ;';
-        	// for (let notification of this.app.notifications) {
-    		//	notification.destroy();
-    		// }
-        }
-    },
+		// connect signals: new notification, notification removed, button pressed
+        this.source_added = Main.messageTray.connect('source-added', Lang.bind(this, this._on_source_added));
+        this.source_removed = Main.messageTray.connect('source-removed', Lang.bind(this, this._on_source_removed));        
+        this.button_pressed = this.button.connect('button-press-event', Lang.bind(this, this._toggle_default_mail_app));
+        
+        // add button
+        this.add_child(this.button);  
+    }
     
-    _startDefaultMailApp: function() {
-    	for (let source of Main.messageTray.getSources()) {
-    		if (source.title.includes(defaultMailAppName)) {
-    			Main.messageTray._removeSource(source);
-    		}
-    	}
-    	try {Util.spawnCommandLine(defaultMailAppExe);}
-    	catch(error) {Util.spawnCommandLine(defaultMailAppExeAlt);}
-    },
+    // get the default email client filename, name, executable and app
+    _find_default_client() {
+    	this.default_mail_app_filename = ByteArray.toString(GLib.spawn_command_line_sync("xdg-mime query default x-scheme-handler/mailto")[1]).slice(0,-1);
+		switch (this.default_mail_app_filename) {
+			case "thunderbird.desktop":
+			case "mozilla-thunderbird.desktop":
+			case "thunderbird_thunderbird.desktop": // snap
+				this.default_mail_app_exe = "thunderbird";
+				this.default_mail_app_name = "Thunderbird";
+			break;
+			case "org.gnome.Evolution.desktop":
+				this.default_mail_app_exe = "evolution -c mail";
+				this.default_mail_app_name = "Evolution";
+			break;
+			case "org.gnome.Geary.desktop":
+				this.default_mail_app_exe = "geary";
+				this.default_mail_app_exe_alt = "flatpak run org.gnome.Geary"; // flatpak alternative
+				this.default_mail_app_name = "Geary";
+			break;
+			case "mailspring_mailspring.desktop":
+			  	this.default_mail_app_exe = "mailspring";
+			  	this.default_mail_app_name = "Mailspring";
+		  	break;
+			default:
+				Main.notify("New Mail Indicator: error, no known email client found.");
+		};
+		
+		// get the app object from filename
+		this.app = Shell.AppSystem.get_default().lookup_app(this.default_mail_app_filename);
+		// for debug purposes you can uncomment the next line: it will pop-up the default mail client above names
+		//Main.notify(defaultMailAppFilename+"  "+defaultMailAppExe+"  "+defaultMailAppName);
+	}
+	
+	// color mail icon related notification
+    _on_source_added(tray, source) {
+        if (source.title.includes(this.default_mail_app_name)) {
+        	this.icon.icon_name = 'mail-unread-symbolic';
+        	this.button.style = 'color: ' + NEW_MAIL_ICON_COLOR + ';';
+        }
+    }
+
+	// un-color mail icon if related source removed
+    _on_source_removed(tray, source) {
+        if (source.title.includes(this.default_mail_app_name)) {
+        	this.icon.icon_name = 'mail-read-symbolic';
+        	this.button.style = 'color: ;';
+        }
+    }
     
-    _destroy: function() {
+    // start default mail app or activate its window or minimize its window
+    _toggle_default_mail_app() {
+    	this.app_window = this.app.get_windows()[0];
+    	if (this.app_window) {
+			if (this.app_window.has_focus()) {
+				this.app_window.minimize();
+			} else {
+				this.app_window.unminimize();
+				this.app_window.activate(global.get_current_time());
+			}
+		} else {
+			try {
+				Util.spawnCommandLine(this.default_mail_app_exe);
+			} catch(error) {
+				Util.spawnCommandLine(this.default_mail_app_exe_alt);
+			};
+		};
+		for (let source of Main.messageTray.getSources()) {
+				if (source.title.includes(this.default_mail_app_name)) {
+					Main.messageTray._removeSource(source);
+				}
+		}
+    }
+    
+    _destroy() {
     	Main.messageTray.disconnect(this.source_added);
         Main.messageTray.disconnect(this.source_removed);        
-        this.actor.disconnect(this.button_pressed); 
-        this.actor.destroy();
+        this.button.disconnect(this.button_pressed); 
+        this.button.destroy();
+        super.destroy();
 	}
 });
 
-let mail_indicator;
+var mail_indicator;
 
 function init() {
 }
 
 function enable() {
     mail_indicator = new MailIndicator();
-    centerBox.add_actor(mail_indicator.actor);
+    Main.panel.addToStatusArea('new-mail-indicator', mail_indicator, -1, 'center');
 }
 
 function disable() {
-	//centerBox.remove_actor(mail_indicator.actor);
 	mail_indicator._destroy();
 }
