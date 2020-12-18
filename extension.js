@@ -8,12 +8,11 @@
 const { GLib, GObject, Shell, St } = imports.gi;
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
-const Lang = imports.lang;
 const Util = imports.misc.util;
 const ByteArray = imports.byteArray;
 
 // new mail indicator color (default Yaru orange: #E95420; GNOME blue: #3584E4)
-const NEW_MAIL_ICON_COLOR = '#E95420';
+var NEW_MAIL_ICON_COLOR = '#E95420';
 
 
 var MailIndicator = GObject.registerClass(
@@ -29,10 +28,11 @@ class MailIndicator extends PanelMenu.Button {
         this.button.set_child(this.icon);
 
 		// connect signals: new notification, notification removed, button pressed
-        this.source_added = Main.messageTray.connect('source-added', Lang.bind(this, this._on_source_added));
-        this.source_removed = Main.messageTray.connect('source-removed', Lang.bind(this, this._on_source_removed));        
-        this.button_pressed = this.button.connect('button-press-event', Lang.bind(this, this._toggle_default_mail_app));
-        
+		if (this.app) {
+		    this.source_added = Main.messageTray.connect('source-added', this._on_source_added.bind(this));
+		    this.source_removed = Main.messageTray.connect('source-removed', this._on_source_removed.bind(this));
+		    this.button_pressed = this.button.connect('button-press-event', this._toggle_default_mail_app.bind(this));
+        };
         // add button
         this.add_child(this.button);  
     }
@@ -66,8 +66,6 @@ class MailIndicator extends PanelMenu.Button {
 		
 		// get the app object from filename
 		this.app = Shell.AppSystem.get_default().lookup_app(this.default_mail_app_filename);
-		// for debug purposes you can uncomment the next line: it will pop-up the default mail client above names
-		//Main.notify(defaultMailAppFilename+"  "+defaultMailAppExe+"  "+defaultMailAppName);
 	}
 	
 	// color mail icon related notification
@@ -111,24 +109,30 @@ class MailIndicator extends PanelMenu.Button {
     }
     
     _destroy() {
-    	Main.messageTray.disconnect(this.source_added);
-        Main.messageTray.disconnect(this.source_removed);        
-        this.button.disconnect(this.button_pressed); 
+    	if (this.app) {
+			Main.messageTray.disconnect(this.source_added);
+		    Main.messageTray.disconnect(this.source_removed);        
+		    this.button.disconnect(this.button_pressed);
+		};
         this.button.destroy();
         super.destroy();
 	}
 });
 
-var mail_indicator;
+class Extension {
+    constructor() {
+    }
+
+    enable() {
+    	this._mail_indicator = new MailIndicator();
+    	Main.panel.addToStatusArea('new-mail-indicator', this._mail_indicator, -1, 'center');
+    }
+
+    disable() {
+    	this._mail_indicator._destroy();
+    }
+}
 
 function init() {
-}
-
-function enable() {
-    mail_indicator = new MailIndicator();
-    Main.panel.addToStatusArea('new-mail-indicator', mail_indicator, -1, 'center');
-}
-
-function disable() {
-	mail_indicator._destroy();
+	return new Extension();
 }
