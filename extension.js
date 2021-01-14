@@ -41,6 +41,10 @@ class MailIndicator extends PanelMenu.Button {
     _find_default_client() {
     	this.default_mail_app_filename = ByteArray.toString(GLib.spawn_command_line_sync("xdg-mime query default x-scheme-handler/mailto")[1]).slice(0,-1);
 		switch (this.default_mail_app_filename) {
+			case "daily.desktop":
+				this.default_mail_app_exe = "thunderbird";
+				this.default_mail_app_name = "Daily";
+			break;
 			case "thunderbird.desktop":
 			case "mozilla-thunderbird.desktop":
 			case "thunderbird_thunderbird.desktop": // snap
