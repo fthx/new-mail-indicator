@@ -24,6 +24,7 @@ class MailIndicator extends PanelMenu.Button {
     	
         this.button = new St.Bin({style_class: 'panel-button', visible: true, reactive: true, can_focus: true, track_hover: true});        
         this.icon = new St.Icon({icon_name: 'mail-read-symbolic', style_class: 'system-status-icon'});
+		this.new_mail = false;
         this.button.set_child(this.icon);
 
 		if (this.app) {
@@ -49,7 +50,8 @@ class MailIndicator extends PanelMenu.Button {
 	
 	// color mail icon related notification
     _on_source_added(tray, source) {
-        if (source.title == this.app_name) {
+        if (source.title && source.title == this.app_name) {
+			this.new_mail = true;
         	this.icon.icon_name = 'mail-unread-symbolic';
         	this.button.set_style('color: ' + NEW_MAIL_ICON_COLOR + ';');
         }
@@ -57,7 +59,8 @@ class MailIndicator extends PanelMenu.Button {
 
 	// un-color mail icon if related source removed
     _on_source_removed(tray, source) {
-        if (source.title == this.app_name) {
+        if (source.title && source.title == this.app_name) {
+			this.new_mail = false;
         	this.icon.icon_name = 'mail-read-symbolic';
         	this.button.set_style('color: ;');
         }
@@ -67,7 +70,7 @@ class MailIndicator extends PanelMenu.Button {
     _toggle_default_mail_app() {
     	this.app_window = this.app.get_windows()[0];
     	if (this.app_window) {
-			if (this.app_window.has_focus()) {
+			if (this.app_window.has_focus() && !this.new_mail) {
 				this.app_window.minimize();
 			} else {
 				this.app_window.unminimize();
@@ -78,7 +81,7 @@ class MailIndicator extends PanelMenu.Button {
 		}
 
 		for (var source of Main.messageTray.getSources()) {
-			if (source.title == this.app_name) {
+			if (source.title && source.title == this.app_name) {
 				MessageTray._removeSource(source);
 			}
 		}
