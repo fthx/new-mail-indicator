@@ -19,10 +19,10 @@ var MailIndicator = GObject.registerClass(
 class MailIndicator extends PanelMenu.Button {
     _init() {
     	super._init(0.0, 'New Mail Indicator');
-    	
+
     	this._find_default_client();
-    	
-        this.button = new St.Bin({style_class: 'panel-button', visible: true, reactive: true, can_focus: true, track_hover: true});        
+
+        this.button = new St.Bin({visible: true, reactive: true, can_focus: true, track_hover: true});        
         this.icon = new St.Icon({icon_name: 'mail-read-symbolic', style_class: 'system-status-icon'});
 		this.new_mail = false;
         this.button.set_child(this.icon);
@@ -45,7 +45,6 @@ class MailIndicator extends PanelMenu.Button {
 		} else {
 			Main.notify("New Mail Indicator: error, no email client found");
 		}
-		
 	}
 	
 	// color mail icon related notification
@@ -65,7 +64,7 @@ class MailIndicator extends PanelMenu.Button {
         	this.button.set_style('color: ;');
         }
     }
-    
+
     // start default mail app or activate its window or minimize its window
     _toggle_default_mail_app() {
     	this.app_window = this.app.get_windows()[0];
@@ -79,14 +78,13 @@ class MailIndicator extends PanelMenu.Button {
 		} else {
 			this.app.activate();
 		}
-
 		for (var source of Main.messageTray.getSources()) {
 			if (source.title && source.title == this.app_name) {
 				MessageTray._removeSource(source);
 			}
 		}
     }
-    
+ 
     _destroy() {
     	if (this.app) {
 			MessageTray.disconnect(this.source_added);
