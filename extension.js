@@ -30,7 +30,7 @@ class MailIndicator extends PanelMenu.Button {
 		if (this.app) {
 		    this.source_added = MessageTray.connect('source-added', this._on_source_added.bind(this));
 		    this.source_removed = MessageTray.connect('source-removed', this._on_source_removed.bind(this));
-		    this.button_pressed = this.button.connect('button-press-event', this._toggle_default_mail_app.bind(this));
+		    this.button_pressed = this.button.connect('button-release-event', this._toggle_default_mail_app.bind(this));
         }
 
         this.add_child(this.button);  
@@ -49,7 +49,7 @@ class MailIndicator extends PanelMenu.Button {
 	
 	// color mail icon related notification
     _on_source_added(tray, source) {
-        if (source.title && source.title == this.app_name) {
+        if (source && source.title && source.title == this.app_name) {
 			this.new_mail = true;
         	this.icon.icon_name = 'mail-unread-symbolic';
         	this.button.set_style('color: ' + NEW_MAIL_ICON_COLOR + ';');
@@ -58,7 +58,7 @@ class MailIndicator extends PanelMenu.Button {
 
 	// un-color mail icon if related source removed
     _on_source_removed(tray, source) {
-        if (source.title && source.title == this.app_name) {
+        if (source && source.title && source.title == this.app_name) {
 			this.new_mail = false;
         	this.icon.icon_name = 'mail-read-symbolic';
         	this.button.set_style('color: ;');
@@ -78,18 +78,17 @@ class MailIndicator extends PanelMenu.Button {
 		} else {
 			this.app.activate();
 		}
-		for (var source of Main.messageTray.getSources()) {
-			if (source.title && source.title == this.app_name) {
-				MessageTray._removeSource(source);
-			}
-		}
     }
  
     _destroy() {
-    	if (this.app) {
+		if (this.source_added) {
 			MessageTray.disconnect(this.source_added);
-		    MessageTray.disconnect(this.source_removed);        
-		    this.button.disconnect(this.button_pressed);
+		}
+		if (this.source_removed) {
+			MessageTray.disconnect(this.source_removed);
+		}
+		if (this.button_pressed) {
+			this.button.disconnect(this.button_pressed);
 		}
         this.button.destroy();
         super.destroy();
