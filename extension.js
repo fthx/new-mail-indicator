@@ -1,7 +1,6 @@
 /*
     New Mail Indicator extension (for GNOME 45+)
-    Copyright 2023 Francois Thirioux
-    GitHub contributors: @fthx
+    Copyright 2024 fthx
     License: GPL v3
 */
 
@@ -14,10 +13,10 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 // new mail indicator color (default Yaru orange: #E95420; GNOME blue: #3584E4)
-var NEW_MAIL_ICON_COLOR = '#E95420';
+const NEW_MAIL_ICON_COLOR = '#E95420';
 
 
-var MailIndicator = GObject.registerClass(
+const MailIndicator = GObject.registerClass(
 class MailIndicator extends PanelMenu.Button {
     _init() {
         super._init();
@@ -101,7 +100,7 @@ class MailIndicator extends PanelMenu.Button {
         this._source_removed = null;
 
         if (this._button_pressed) {
-            this.button.disconnect(this._button_pressed);
+            this._button.disconnect(this._button_pressed);
         }
         this._button_pressed = null;
 
@@ -118,5 +117,6 @@ export default class NewMailIndicatorExtension {
 
     disable() {
         this._mail_indicator._destroy();
+        this._mail_indicator = null;
     }
 }

@@ -3,7 +3,8 @@
   "description": "New mail indicator.\n\n It checks the notifications in the message tray related to a new mail coming from your default email client, no extra configuration needed, very light extension. Click on the icon does toggle your email client window.\n\n *** Do not disable the notifications of your default email client!\n\n *** It is not a standalone mail checker, you need your email client to be running.",
   "name": "New Mail Indicator",
   "shell-version": [
-    "45"
+    "45",
+    "46"
   ],
   "url": "https://github.com/fthx/new-mail-indicator",
   "uuid": "new-mail-indicator@fthx",
