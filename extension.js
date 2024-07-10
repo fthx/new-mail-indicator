@@ -112,7 +112,7 @@ class MailIndicator extends PanelMenu.Button {
 export default class NewMailIndicatorExtension {
     enable() {
         this._mail_indicator = new MailIndicator();
-        Main.panel.addToStatusArea('new-mail-indicator', this._mail_indicator, -1, 'center');
+        Main.panel.addToStatusArea('new-mail-indicator', this._mail_indicator);
     }
 
     disable() {
