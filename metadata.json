@@ -4,7 +4,9 @@
   "name": "New Mail Indicator",
   "shell-version": [
     "45",
-    "46"
+    "46",
+    "47",
+    "48"
   ],
   "url": "https://github.com/fthx/new-mail-indicator",
   "uuid": "new-mail-indicator@fthx",
